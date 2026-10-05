@@ -1,0 +1,33 @@
+[project]
+  name            = "wireguard-spoke-agent"
+  version         = "0.1.0"
+  description     = "Keeps a Windows WireGuard spoke's tunnel installed, current with wireguard-hub's releases, and running"
+  readme          = "README.md"
+  requires-python = ">=3.14"
+  # devkit-container only because aeth-ext needs it: an explicit index's source applies to direct dependencies alone.
+  dependencies    = ["aeth-ext>=9.0.2", "devkit-container"]
+
+  [project.scripts]
+    wireguard-spoke-agent = "wireguard_spoke_agent.__main__:main"
+
+[dependency-groups]
+  dev = ["aeth-devkit"]
+
+[build-system]
+  requires      = ["uv_build>=0.11.2,<0.12.0"]
+  build-backend = "uv_build"
+
+[tool.poe]
+  include_script = [{ script = "aeth_devkit:tasks", executor = { type = "uv", frozen = true } }]
+
+[tool.uv]
+  [tool.uv.sources]
+    aeth-devkit = [{ index = "SFTPyPI" }]
+    aeth-ext    = [{ index = "SFTPyPI" }]
+    devkit-container = [{ index = "SFTPyPI" }]
+
+  [[tool.uv.index]]
+    name        = "SFTPyPI"
+    url         = "https://pypi.sweetfiretobacco.com/jacob.ogden/internal/+simple"
+    publish-url = "https://pypi.sweetfiretobacco.com/jacob.ogden/internal/"
+    explicit    = true

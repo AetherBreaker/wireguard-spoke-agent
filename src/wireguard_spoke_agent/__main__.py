@@ -57,7 +57,8 @@ log = logging.getLogger("wireguard_spoke_agent")
 
 def load_settings() -> None:
   """Read `settings.env` (`KEY=value` lines, `#` comments) into this process's environment."""
-  for raw in SETTINGS_FILE.read_text(encoding="utf-8").splitlines():
+  # utf-8-sig: Windows PowerShell 5.1 writes a BOM, which would otherwise glue onto the first key.
+  for raw in SETTINGS_FILE.read_text(encoding="utf-8-sig").splitlines():
     line = raw.strip()
     if line and not line.startswith("#"):
       key, _, value = line.partition("=")
@@ -66,8 +67,8 @@ def load_settings() -> None:
 
 def http_get(url: str) -> str:
   """GET *url* and return its body as text."""
-  req = urllib.request.Request(url, headers={"User-Agent": "wireguard-spoke-agent"})  # noqa: S310 - fixed https URLs
-  with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECS) as resp:  # noqa: S310
+  req = urllib.request.Request(url, headers={"User-Agent": "wireguard-spoke-agent"})
+  with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SECS) as resp:
     return resp.read().decode("utf-8")
 
 
@@ -146,8 +147,10 @@ def handshake_fresh(peer: str, *, settle: bool) -> bool:
 def ping(*, fresh: bool) -> None:
   """Report *fresh* to healthchecks.io; a no-op unless `ALERTS_HEALTHCHECK_PING_URL` or `PINGKEY` is set."""
   # Third party imports
-  from aeth_ext.monitoring.heartbeat import send_heartbeat
   from pydantic import SecretStr
+
+  # First party imports
+  from aeth_ext.monitoring.heartbeat import send_heartbeat
 
   url, key = os.environ.get("ALERTS_HEALTHCHECK_PING_URL", "").strip(), os.environ.get("PINGKEY", "").strip()
   if not (url or key):
@@ -177,7 +180,9 @@ def reconcile(state: dict[str, str]) -> None:
     python = state.get("python") or None
   state["python"] = python or ""
   templates = files("wireguard_spoke_agent")
-  run_cmd = templates.joinpath("run.cmd").read_text(encoding="utf-8").format(home=HOME, python_arg=f" --python {python}" if python else "")
+  run_cmd = (
+    templates.joinpath("run.cmd").read_text(encoding="utf-8").format(home=HOME, python_arg=f" --python {python}" if python else "")
+  )
   # cmd.exe wants CRLF; the package file's line endings depend on how it was checked out.
   run_cmd = "\r\n".join(run_cmd.splitlines()) + "\r\n"
   if not RUN_CMD.exists() or RUN_CMD.read_bytes() != run_cmd.encode("utf-8"):
@@ -222,7 +227,7 @@ def main() -> None:
     handlers=[RotatingFileHandler(LOG_FILE, maxBytes=1024**2, backupCount=3, encoding="utf-8"), logging.StreamHandler()],
   )
   load_settings()
-  # Third party imports
+  # First party imports
   from aeth_ext.errors import handle_fatal_exc_sync
 
   if sys.argv[1:] == ["install"]:
